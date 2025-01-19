@@ -13,18 +13,11 @@ Used assets are from https://ambientcg.com/view?id=PavingStones131
 
 Setup Instructions
 ------------------
-1. Clone the repository to your local machine.
-2. Navigate to the project directory.
-3. Install the required Python packages using the following command:
-pip install -r requirements.txt
-
-
-Features
-------------------
-AutoEncoder
-
-Feature grids pyramid
-
+1. Install pytorch (requires CUDA version)  https://pytorch.org/get-started/locally/
+2. Clone the repository to your local machine.
+3. Navigate to the project directory.
+4. Install the required Python packages using the following command:
+`pip install -r requirements.txt`
 
 
 Usage
@@ -60,6 +53,11 @@ Command Line Flags
 - `-clean`: Clean the output directory.
 - `-o=<workspace_directory>`: Set the workspace directory.
 
+Related
+------------------
+AutoEncoder
+
+Feature grids pyramid
 
 Contact
 -------
