@@ -100,16 +100,9 @@ def compressTextures2(autoencoder, device, encoderSettings, original_data, outpu
     inputs_tensor = torch.Tensor(inputs).to(device)
     inputs_tensor = inputs_tensor.permute(2, 0, 1)
 
-
-    data_loader = torch.utils.data.DataLoader(inputs_tensor, batch_size=2, shuffle=False)
-    
-    current_idx = 0
-    #torch_output = torch.zeros(output_channels_num * output_textures_num, output_size, output_size, device=device)
     with torch.no_grad():
         encoder_outputs = autoencoder.encoder(inputs_tensor)
         encoder_outputs
-
-        print(encoder_outputs.shape)
 
     #fine featuregrid
     outputTextures[0][:] = encoder_outputs[:output_channels_num].permute(1, 2, 0).cpu().numpy()
