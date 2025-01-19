@@ -20,7 +20,8 @@ import concurrent.futures
 from multiprocessing import Pool
 from multiprocessing import freeze_support
 
-import Compressor 
+import Compressor
+import Decompressor
 import Preprocess
 import TextureSet
 import AutoEncoder
@@ -184,7 +185,7 @@ for i in range(1, num_feature_grids):
 
 
 if runCompression:
-    output_textures = Compressor.compressTextures2(autoencoder, device, encoderSettings, dataSet, compressed_texture_size)
+    output_textures = Compressor.compressTextures(autoencoder, device, encoderSettings, dataSet, compressed_texture_size)
 
     #save compressed texture
     for i in range(len(output_textures)):
@@ -243,7 +244,7 @@ if runDecompression:
         compressed_texture = np.array(cv2.imread(compressed_texture_name, cv2.IMREAD_UNCHANGED), dtype=np.float16)
         compressed_textures.append(compressed_texture)
 
-    decompressed_data = Compressor.decompressTextures(autoencoder, device, compressed_textures, decompress_size, encoderSettings)
+    decompressed_data = Decompressor.decompressTextures(autoencoder, device, compressed_textures, decompress_size, encoderSettings)
     np.save(decompressed_data_file_path, decompressed_data)
 
     #restore textures
