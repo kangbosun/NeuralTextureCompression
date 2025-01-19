@@ -6,10 +6,10 @@ import cv2
 
 # Texture paths array
 texturePaths = [
-    'textures/PavingStones131_4K-Color.png', 
-    'textures/PavingStones131_4K-NormalDX.png', 
-    'textures/PavingStones131_4K-Roughness.png', 
-    'textures/PavingStones131_4K-AmbientOcclusion.png']
+    'inputs/PavingStones131_4K-Color.png', 
+    'inputs/PavingStones131_4K-NormalDX.png', 
+    'inputs/PavingStones131_4K-Roughness.png', 
+    'inputs/PavingStones131_4K-AmbientOcclusion.png']
 
 # Class for each Texture
 class Texture:
