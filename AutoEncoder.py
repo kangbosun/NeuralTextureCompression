@@ -288,7 +288,7 @@ def trainAutoEncoder(autoencoder, device, dataset, epochs, batchSize, learningRa
     ssim_loss_func = SSIMLoss()
 
     #data info
-    patch_size = 4
+    patch_size = 8
     batch_size = patch_size * patch_size
     batch_num = (int)(batchSize / batch_size)
     patch_dataset = PatchDataset(dataset, patch_size)

@@ -53,6 +53,8 @@ outputDirectory = 'outputs\\'
 epochs = 10
 decompress_size = 1024
 
+num_feature_grids = 3
+
 #init launch options from command line flags
 import sys
 for arg in sys.argv:
@@ -67,6 +69,10 @@ for arg in sys.argv:
     if arg.startswith('-decomp='):
         decompress_size = int(arg[8:])
         runDecompression = True
+    if arg.startswith('-featuregrids='):
+        #clamp to 0-4
+        num_feature_grids = max(0, min(4, int(arg[14:])))
+
     if arg == '-val':
         runValidation = True
     if arg == '-clean':
@@ -140,7 +146,7 @@ else:
 print("-----------------------------")
 
 # Neural Compression
-num_feature_grids = 3
+
 color_channel_count = dataSet.shape[2]
 encoderSettings = AutoEncoder.EncoderSettings(color_channel_count, num_feature_grids)
 
