@@ -1,4 +1,4 @@
-# NeuralTextureCompression
+# Neural Texture Compression
 
 Neural Texture Compression Project
 ==========================
