@@ -3,7 +3,9 @@
 Neural Texture Compression Project
 ==========================
 
-This project implements a neural network-based approach for compressing and decompressing textures. The main components of the project include preprocessing, training an autoencoder, compressing textures, and decompressing textures.
+This study project implements a neural network-based approach for compressing and decompressing textures. The main components of the project include preprocessing, training an autoencoder, compressing textures, and decompressing textures.
+
+https://research.nvidia.com/labs/rtr/neural_texture_compression/
 
 Project Structure
 -----------------
