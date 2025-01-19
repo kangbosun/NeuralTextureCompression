@@ -6,14 +6,9 @@ Neural Texture Compression Project
 This study project implements a neural network-based approach for compressing and decompressing textures. The main components of the project include preprocessing, training an autoencoder, compressing textures, and decompressing textures.
 
 https://research.nvidia.com/labs/rtr/neural_texture_compression/
+https://www.gdcvault.com/play/1034892/Machine-Learning-Summit-Real-time
 
-Project Structure
------------------
-- AutoEncoder.py: Contains the implementation of the autoencoder model and related classes.
-- Compressor.py: Contains functions for compressing and decompressing textures using the trained autoencoder.
-- Run.py: Main script for running preprocessing, training, compression, and decompression tasks.
-- requirements.txt: List of required Python packages.
-- .gitignore: Specifies files and directories to be ignored by Git.
+Used assets are from https://ambientcg.com/view?id=PavingStones131
 
 Setup Instructions
 ------------------
@@ -26,6 +21,7 @@ pip install -r requirements.txt
 Features
 ------------------
 AutoEncoder
+
 Feature grids pyramid
 
 
