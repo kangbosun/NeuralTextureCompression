@@ -104,8 +104,13 @@ if os.path.exists(preprocessed_dataset_name):
 else:
     if runPreprocessing:
         # Load textures
+
+        #get textures from input directory
+        texturePaths = [inputDirectory + f for f in os.listdir(inputDirectory) if os.path.isfile(os.path.join(inputDirectory, f))]
+
+
         print("Loading textures")
-        textures = TextureSet.loadTextures(TextureSet.texturePaths)
+        textures = TextureSet.loadTextures(texturePaths)
         print("Textures loaded: ", len(textures))
 
         TextureSet.PrintTextureInfo(textures)

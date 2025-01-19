@@ -5,11 +5,11 @@ import tqdm
 import cv2
 
 # Texture paths array
-texturePaths = [
-    'inputs/PavingStones131_4K-Color.png', 
-    'inputs/PavingStones131_4K-NormalDX.png', 
-    'inputs/PavingStones131_4K-Roughness.png', 
-    'inputs/PavingStones131_4K-AmbientOcclusion.png']
+# texturePaths = [
+#     'inputs/PavingStones131_4K-Color.png', 
+#     'inputs/PavingStones131_4K-NormalDX.png', 
+#     'inputs/PavingStones131_4K-Roughness.png', 
+#     'inputs/PavingStones131_4K-AmbientOcclusion.png']
 
 # Class for each Texture
 class Texture:
