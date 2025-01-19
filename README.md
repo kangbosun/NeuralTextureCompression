@@ -52,19 +52,6 @@ Command Line Flags
 - `-clean`: Clean the output directory.
 - `-o=<workspace_directory>`: Set the workspace directory.
 
-Output
-------
-The output directory will contain the following files:
-- `dataset.npy`: Preprocessed dataset.
-- `model.pth`: Trained autoencoder model.
-- `compressedX.tiff`: Compressed textures.
-- `decompressed.npy`: Decompressed data.
-- `restored_color.bmp`: Restored color texture.
-- `restored_normal.bmp`: Restored normal texture.
-- `restored_roughness.bmp`: Restored roughness texture.
-- `restored_ao.bmp`: Restored ambient occlusion texture.
-- `training_curve.png`: Training loss and PSNR curves.
-- `training_curve.csv`: Training loss and PSNR data.
 
 Contact
 -------
