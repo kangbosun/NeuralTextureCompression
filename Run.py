@@ -169,33 +169,10 @@ if model is not None:
     autoencoder.load_state_dict(model)
     print("Autoencoder loaded")
 
-#debug encoder test
-testChannel = [0.63529414, 0.6117647,  0.52156866, 0.5019608,  0.50980395, 1.0, 0.45882353, 0.9882353,  0.7011719,  0.9057617 ]
-testChannel = np.array(testChannel)
-
-def testEncoder(autoencoder, device, testChannel):
-    autoencoder.to(device)
-    autoencoder.eval()
-
-    print("Testing encoder")
-    print("Input: ", testChannel)
-
-    testChannel = torch.Tensor(testChannel).to(device)
-    fixedPos = torch.Tensor([0.9057617, 0.7011719]).to(device)
-
-    with torch.no_grad():
-        encoder_input = testChannel
-        encoder_output = autoencoder.encoder(encoder_input, 3)
-
-        decoder_input = torch.cat([encoder_output[:-2], fixedPos])
-        decoder_output = autoencoder.decoder(decoder_input)
-        print("Output: ", decoder_output.cpu().numpy())
-
-#testEncoder(autoencoder, device, testChannel) 
 
 if runAutoencoderTraining:
     print("Training autoencoder")
-    AutoEncoder.trainAutoEncoder(autoencoder, device, dataSet, epochs, 2048, 1e-4, outputDirectory)
+    AutoEncoder.trainAutoEncoder(autoencoder, device, dataSet, epochs, 1024, 1e-4, outputDirectory)
     #save autoencoder
     torch.save(autoencoder.state_dict(), modelFilePath)
 

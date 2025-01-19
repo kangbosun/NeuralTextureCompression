@@ -344,7 +344,7 @@ def trainAutoEncoder(autoencoder, device, dataset, epochs, batchSize, learningRa
             mse_loss = mse_loss_func(decoder_outputs, texTensor)
             ssim_loss = ssim_loss_func(decoder_outputs, texTensor)
 
-            loss = mse_loss + ssim_loss
+            loss = mse_loss# + ssim_loss
             loss.backward()
 
             epoch_PSNR += 10 * torch.log10(1 / mse_loss)

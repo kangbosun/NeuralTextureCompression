@@ -23,6 +23,13 @@ Setup Instructions
 pip install -r requirements.txt
 
 
+Features
+------------------
+AutoEncoder
+Feature grids pyramid
+
+
+
 Usage
 -----
 1. Preprocessing:
