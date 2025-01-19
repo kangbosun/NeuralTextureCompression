@@ -50,7 +50,7 @@ To validate the decompressed textures, set `runValidation = True` in `Run.py` or
 6. Cleaning Output:
 To clean the output directory, set `cleanoutput = True` in `Run.py` or use the `-clean` command line flag.
 
-ex.) py run.py -o=test1 -pp -train -e=10 -comp -decomp
+ex.) `py run.py -o=test1 -pp -train -e=10 -comp -decomp`
 
 Command Line Flags
 ------------------
