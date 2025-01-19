@@ -50,7 +50,7 @@ Command Line Flags
 - `-decomp=<output_size>`: Run texture decompression with the specified output size.
 - `-val`: Run validation.
 - `-clean`: Clean the output directory.
-- `-w=<workspace_directory>`: Set the workspace directory.
+- `-o=<workspace_directory>`: Set the workspace directory.
 
 Output
 ------
