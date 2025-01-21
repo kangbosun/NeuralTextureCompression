@@ -19,6 +19,9 @@ Setup Instructions
 4. Install the required Python packages using the following command:
 `pip install -r requirements.txt`
 
+Sample Outputs
+--------------
+Using the trained neural network, four 4K textures (with 3, 3, 1, and 1 channels) are compressed into four feature grids (top resolution 1024, .tiff) and then decompressed back.(restored[n].bmp) The training time on an RTX 4060 is approximately 3 minutes.
 
 Usage
 -----
@@ -34,13 +37,15 @@ To compress textures, set `runCompression = True` in `Run.py` or use the `-comp`
 4. Decompression:
 To decompress textures, set `runDecompression = True` in `Run.py` or use the `-decomp=<output_size>` command line flag.
 
-5. Validation:
-To validate the decompressed textures, set `runValidation = True` in `Run.py` or use the `-val` command line flag.
+5. Feature Grids:
+The -featuregrids=[1-4] flag specifies the number of feature grid levels used for compression and decompression. Higher values result in better reconstruction quality but require more storage. For example, -featuregrids=4 uses a four-level feature grid pyramid.
 
 6. Cleaning Output:
 To clean the output directory, set `cleanoutput = True` in `Run.py` or use the `-clean` command line flag.
 
-ex.) `py run.py -o=test1 -pp -train -e=10 -comp -decomp`
+ex.) `py run.py -o=test1 -pp -train -e=10 -comp -decomp=4096 -featuregrids=4`
+
+
 
 Command Line Flags
 ------------------
@@ -49,7 +54,7 @@ Command Line Flags
 - `-e=<number_of_epochs>`: Set the number of epochs for training.
 - `-comp`: Run texture compression.
 - `-decomp=<output_size>`: Run texture decompression with the specified output size.
-- `-val`: Run validation.
+- `-featuregrids=[1-4]`: Set the number of feature grid levels used for compression and decompression.
 - `-clean`: Clean the output directory.
 - `-o=<workspace_directory>`: Set the workspace directory.
 
