@@ -7,27 +7,17 @@ This study project implements a neural network-based approach for compressing an
 
 https://research.nvidia.com/labs/rtr/neural_texture_compression/
 
-Project Structure
------------------
-- AutoEncoder.py: Contains the implementation of the autoencoder model and related classes.
-- Compressor.py: Contains functions for compressing and decompressing textures using the trained autoencoder.
-- Run.py: Main script for running preprocessing, training, compression, and decompression tasks.
-- requirements.txt: List of required Python packages.
-- .gitignore: Specifies files and directories to be ignored by Git.
+https://www.gdcvault.com/play/1034892/Machine-Learning-Summit-Real-time
+
+Used assets are from https://ambientcg.com/view?id=PavingStones131
 
 Setup Instructions
 ------------------
-1. Clone the repository to your local machine.
-2. Navigate to the project directory.
-3. Install the required Python packages using the following command:
-pip install -r requirements.txt
-
-
-Features
-------------------
-AutoEncoder
-Feature grids pyramid
-
+1. Install pytorch (requires CUDA version)  https://pytorch.org/get-started/locally/
+2. Clone the repository to your local machine.
+3. Navigate to the project directory.
+4. Install the required Python packages using the following command:
+`pip install -r requirements.txt`
 
 
 Usage
@@ -50,7 +40,7 @@ To validate the decompressed textures, set `runValidation = True` in `Run.py` or
 6. Cleaning Output:
 To clean the output directory, set `cleanoutput = True` in `Run.py` or use the `-clean` command line flag.
 
-ex.) py run.py -o=test1 -pp -train -e=10 -comp -decomp
+ex.) `py run.py -o=test1 -pp -train -e=10 -comp -decomp`
 
 Command Line Flags
 ------------------
@@ -63,6 +53,11 @@ Command Line Flags
 - `-clean`: Clean the output directory.
 - `-o=<workspace_directory>`: Set the workspace directory.
 
+Related
+------------------
+AutoEncoder
+
+Feature grids pyramid
 
 Contact
 -------
