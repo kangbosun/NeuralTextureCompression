@@ -173,7 +173,7 @@ if model is not None:
 
 if runAutoencoderTraining:
     print("Training autoencoder")
-    AutoEncoder.trainAutoEncoder(autoencoder, device, dataSet, epochs, 1024, 1e-4, outputDirectory)
+    AutoEncoder.trainAutoEncoder(autoencoder, device, dataSet, channel_count_list, epochs, 8192, 1e-4, outputDirectory)
     #save autoencoder
     torch.save(autoencoder.state_dict(), modelFilePath)
 
@@ -202,6 +202,8 @@ def restoreTextures(colorChannels, channel_count_list):
    # texure list
     textures = []
 
+    print(channel_count_list)
+
     #split color channels to textures
     channel_start = 0
     for i in range(len(channel_count_list)):
@@ -222,18 +224,8 @@ def saveRestoredTexture(texture, width, height, channelCount, name):
     data = np.clip(data, 0, 1)
     data = (data * 255).astype(np.uint8)
 
-    #convert BGR to RGB
-    if channelCount == 3:
-        data = cv2.cvtColor(data, cv2.COLOR_BGR2RGB)
-
     cv2.imwrite(name, data)
 
-    if channelCount == 1:
-        data = Image.fromarray(data, 'L')
-    else:
-        data = Image.fromarray(data, 'RGB')
-
-    data.save(name)
 
 decompressed_data_file_path = outputDirectory + 'decompressed.npy'
 decompressed_data = None
@@ -243,12 +235,14 @@ if runDecompression:
     for compressed_texture_name in compressed_texture_names:
         compressed_texture = np.array(cv2.imread(compressed_texture_name, cv2.IMREAD_UNCHANGED), dtype=np.float16)
         compressed_textures.append(compressed_texture)
+        print("Compressed texture loaded: ", compressed_texture_name)
 
     decompressed_data = Decompressor.decompressTextures(autoencoder, device, compressed_textures, decompress_size, encoderSettings)
     np.save(decompressed_data_file_path, decompressed_data)
 
     #restore textures
     restoredTextures = restoreTextures(decompressed_data, channel_count_list)
+    #restoredTextures = restoreTextures(dataSet, channel_count_list)
     #save restored texture as bmp
     restoredTextureName = outputDirectory + 'restored'
 

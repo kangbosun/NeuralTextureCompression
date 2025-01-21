@@ -30,9 +30,11 @@ def compressTextures(autoencoder, device, encoderSettings, original_data, output
     output_channels_num = encoderSettings.channels_per_featuregrid
     output_textures_num = encoderSettings.featuregrids_num
 
+    input_res = len(original_data[0])
+
     # Log compression general information
     print("Compressing textures begin")
-    print("Input Res :", len(original_data[0]), "Channels:", len(original_data[0][0]))
+    print("Input Res :", input_res, "Channels:", len(original_data[0][0]))
     print("Output Res:", output_size, "Channels:", output_channels_num)
     print("Output Textures:", output_textures_num)
 
@@ -60,16 +62,13 @@ def compressTextures(autoencoder, device, encoderSettings, original_data, output
     with torch.no_grad():
         encoder_outputs = autoencoder.encoder(inputs_tensor)
 
-    #fine featuregrid
-    outputTextures[0][:] = encoder_outputs[:output_channels_num].permute(1, 2, 0).cpu().numpy()
-
-    scale_factor = 0.5
-    for i in range(1, output_textures_num):
+    grid_size = output_size
+    for i in range(0, output_textures_num):
         #scale down output data
-        coarse_data = encoder_outputs[i*output_channels_num: (i+1)*output_channels_num].unsqueeze(0)
-        scaled_texture = torch.nn.functional.interpolate(coarse_data, scale_factor=scale_factor, mode='bilinear')
+        grid_data = encoder_outputs[i*output_channels_num: (i+1)*output_channels_num].unsqueeze(0)
+        scaled_texture = torch.nn.functional.interpolate(grid_data, size=(grid_size, grid_size), mode='bilinear')
         outputTextures[i][:] = scaled_texture.squeeze(0).permute(1, 2, 0).cpu().numpy()
-        scale_factor *= 0.5
+        grid_size = grid_size // 2
 
     print("Compressing textures end")
     return outputTextures

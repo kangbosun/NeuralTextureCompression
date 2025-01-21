@@ -16,29 +16,29 @@ def decompressTextures(autoencoder, device, compressed_textures, outputSize, enc
     # Create grid of normalized coordinates
     y_coords, x_coords = np.meshgrid(np.linspace(0, 1, outputSize), np.linspace(0, 1, outputSize), indexing='ij')
 
-    # Map to input compressed texture coordinates
-    ypos = (y_coords * (len(compressed_textures[0]) - 1)).astype(int)
-    xpos = (x_coords * (len(compressed_textures[0][0]) - 1)).astype(int)
+    y_coords = torch.Tensor(y_coords).to(device)
+    x_coords = torch.Tensor(x_coords).to(device)
 
     # Gather compressed texture data and concatenate with normalized coordinates
-    selectedChannels = compressed_textures[0][ypos, xpos]
-    for i in range(1, len(compressed_textures)):
-        scaled_ypos = (y_coords * (len(compressed_textures[i]) - 1)).astype(int)
-        scaled_xpos = (x_coords * (len(compressed_textures[i][0]) - 1)).astype(int)
-        selectedChannels = np.concatenate([selectedChannels, compressed_textures[i][scaled_ypos, scaled_xpos]], axis=-1)
+    channels_tensor = None
+
+    for i in range(0, len(compressed_textures)):
+        #upscale feature grid
+        grid = compressed_textures[i]
+        grid = torch.tensor(grid).to(device).permute(2, 0, 1)
+        grid = torch.nn.functional.interpolate(grid.unsqueeze(0), size=(outputSize, outputSize), mode='bilinear', align_corners=False)
+        if channels_tensor is None:
+            channels_tensor = grid
+        else:
+            channels_tensor = torch.cat([channels_tensor, grid], dim=1)
+
+    inputs_tensor = torch.cat([channels_tensor, y_coords.unsqueeze(0).unsqueeze(0), x_coords.unsqueeze(0).unsqueeze(0)], dim=1)    
     
-    inputs = np.concatenate([selectedChannels, y_coords[..., None], x_coords[..., None]], axis=-1)
-
-    # Convert inputs to tensor
-    inputs_tensor = torch.Tensor(inputs.astype(np.float32)).to(device)
-
-    inputs_tensor = inputs_tensor.permute(2, 0, 1)
-
     with torch.no_grad():
         decoder_outputs = autoencoder.decoder(inputs_tensor)
 
     outputTexture = np.zeros((outputSize, outputSize, encoderSettings.input_channels), dtype=np.float32)    
-    outputTexture[:] = decoder_outputs.permute(1, 2, 0).cpu().numpy()
+    outputTexture[:] = decoder_outputs.squeeze(0).permute(1, 2, 0).cpu().numpy()
 
     print("Decompressing textures end")
     return outputTexture

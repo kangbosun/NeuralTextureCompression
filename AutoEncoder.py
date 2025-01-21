@@ -97,11 +97,17 @@ import numpy as np
 
 # Custom dataset class for patch_size
 class PatchDataset(torch.utils.data.Dataset):
-    def __init__(self, dataset, patch_size):
+    def __init__(self, dataset, patch_size, random_sampling_num=None):
         self.dataset = torch.Tensor(dataset).permute(2, 0, 1)
         self.C, self.H, self.W = self.dataset.shape
         self.patch_size = patch_size
-        self.num_patches = int(self.H * self.W / (self.patch_size * self.patch_size))
+
+        self.random_sampling = random_sampling_num is not None
+
+        if random_sampling_num is not None:
+            self.num_patches = random_sampling_num
+        else:  
+            self.num_patches = int(self.H * self.W / (self.patch_size * self.patch_size))
 
         print("===== PatchDataset Info =====")
         print("Dataset shape: ", self.dataset.shape)
@@ -120,8 +126,12 @@ class PatchDataset(torch.utils.data.Dataset):
         return self.num_patches
     
     def __getitem__(self, idx):
-        y = int(idx // (self.W / self.patch_size)) * self.patch_size
-        x = int(idx % (self.W / self.patch_size)) * self.patch_size
+        if self.random_sampling is not None:
+            y = random.randint(0, self.H - self.patch_size)
+            x = random.randint(0, self.W - self.patch_size)
+        else:
+            y = int(idx // (self.W / self.patch_size)) * self.patch_size
+            x = int(idx % (self.W / self.patch_size)) * self.patch_size
 
         patch = self.dataset[:, y:y+self.patch_size, x:x+self.patch_size]
 
@@ -162,9 +172,9 @@ class CustomDataset(torch.utils.data.Dataset):
 
 
 class SSIMLoss(nn.Module):
-    def __init__(self, patch_size=4):
+    def __init__(self, channels, patch_size=4):
         super(SSIMLoss, self).__init__()
-        self.ssim = piqa.SSIM(window_size=patch_size, n_channels=8).to('cuda')
+        self.ssim = piqa.SSIM(window_size=patch_size, n_channels=channels).to('cuda')
         self.mse = nn.MSELoss()
 
     def forward(self, output, target):
@@ -246,7 +256,7 @@ def end_of_epoch(autoencoder, outputDirectory, epoch, loss_history, psnr_history
     with open(csv_path, "a") as f:
         f.write(f"{epoch},{loss_history[-1]},{psnr_history[-1]},{ssim_history[-1]},{lr[0]}\n")
 
-def trainAutoEncoder(autoencoder, device, dataset, epochs, batchSize, learningRate, outputDirectory):
+def trainAutoEncoder(autoencoder, device, dataset, channels_list, epochs, batchSize, learningRate, outputDirectory):
     #load previous model and log
     start_epoch = 0
     loss_history = []
@@ -284,13 +294,26 @@ def trainAutoEncoder(autoencoder, device, dataset, epochs, batchSize, learningRa
     #scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.95)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=10, verbose=True)
 
+    total_channels = 0
+    for channels in channels_list:
+        total_channels += channels
+
     mse_loss_func = nn.MSELoss()
-    ssim_loss_func = SSIMLoss()
+    ssim_loss_func = SSIMLoss(total_channels)
+
+    data_set_size = len(dataset[0])
+    #trains using full res feature grid
+    top_level_grid_size = 4096
+    top_level_grid_ratio = top_level_grid_size / data_set_size
+    num_feature_grids = autoencoder.encoderSettings.featuregrids_num
+
+    top_level_feature_grid_patch_size = int(2 ** (num_feature_grids ))
 
     #data info
-    patch_size = 8
+    num_samples = 10000
+    patch_size = int(top_level_feature_grid_patch_size / top_level_grid_ratio)
     batch_size = patch_size * patch_size
-    batch_num = (int)(batchSize / batch_size)
+    batch_num = max(1, (int)(batchSize / batch_size))
     patch_dataset = PatchDataset(dataset, patch_size)
   
     data_loader = torch.utils.data.DataLoader(patch_dataset, batch_size=batch_num, shuffle=True, num_workers=0)
@@ -303,8 +326,6 @@ def trainAutoEncoder(autoencoder, device, dataset, epochs, batchSize, learningRa
 
     #batch_dataset = CustomDataset(dataset)
     #data_loader = torch.utils.data.DataLoader(batch_dataset, batch_size=batchSize, shuffle=True, num_workers=0)
-
-    num_feature_grids = autoencoder.encoderSettings.featuregrids_num
 
     for epoch in range(start_epoch, epochs):
         epoch_loss = 0.0
@@ -322,34 +343,36 @@ def trainAutoEncoder(autoencoder, device, dataset, epochs, batchSize, learningRa
             encoder_inputs = torch.cat([texTensor, posTensor], dim=1)
             
             endcoder_outputs = autoencoder.encoder(encoder_inputs)
- 
-            fine_outputs = endcoder_outputs[:, :3]
 
-            decoder_inputs = fine_outputs
+            feature_grid_size = top_level_feature_grid_patch_size
+            for i in range(0, num_feature_grids):
+                grid_output = endcoder_outputs[:, 3 * i:3 * (i + 1), :, :]
+                if feature_grid_size != top_level_feature_grid_patch_size:
+                    grid_output = nn.functional.interpolate(grid_output, size=(feature_grid_size, feature_grid_size), mode='bilinear', align_corners=False)
+                    grid_output = nn.functional.interpolate(grid_output, size=(patch_size, patch_size), mode='bilinear', align_corners=False)
+                
+                if i == 0:
+                    decoder_inputs = grid_output
+                else:              
+                    decoder_inputs = torch.cat([decoder_inputs, grid_output], dim=1)
 
-            #create feature grid inputs
-            scale_factor = 0.5
-            for i in range(1, num_feature_grids):
-                coarse_outputs = endcoder_outputs[:, 3 * i:3 * (i + 1), :, :]
-                coarse_downscaled_outputs = nn.functional.interpolate(coarse_outputs, scale_factor=scale_factor, mode='bilinear', align_corners=False)
-                coarse_upscaled_outputs = nn.functional.interpolate(coarse_downscaled_outputs, size=(fine_outputs.shape[2], fine_outputs.shape[3]), mode='bilinear', align_corners=False)
-                decoder_inputs = torch.cat([decoder_inputs, coarse_upscaled_outputs], dim=1)
-                scale_factor *= 0.5
+                feature_grid_size = int(feature_grid_size / 2)
 
             decoder_inputs = torch.cat([decoder_inputs, posTensor], dim=1)
 
             #decoder output
             decoder_outputs = autoencoder.decoder(decoder_inputs)
 
+            #get loss for each channels
             mse_loss = mse_loss_func(decoder_outputs, texTensor)
-            ssim_loss = ssim_loss_func(decoder_outputs, texTensor)
+            #ssim_loss = ssim_loss_func(decoder_outputs, texTensor)
 
             loss = mse_loss# + ssim_loss
             loss.backward()
 
             epoch_PSNR += 10 * torch.log10(1 / mse_loss)
             epoch_loss += loss.item()
-            epoch_SSIM += 1 - ssim_loss.item()
+            epoch_SSIM += 0#1 - ssim_loss.item()
             epoce_mse_loss += mse_loss.item()
 
             optimizer.step()

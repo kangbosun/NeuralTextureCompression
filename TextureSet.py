@@ -54,6 +54,10 @@ def loadTextures(texturePaths):
     textures = []
     for texturePath in tqdm.tqdm(texturePaths):
         textures.append(Texture(texturePath))
+
+    #sort textures by channels 
+    textures.sort(key=lambda x: x.channels, reverse=True)
+
     return textures
 
 def GetCountOfColorChannels(textures):
