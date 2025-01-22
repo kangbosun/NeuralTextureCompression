@@ -129,3 +129,6 @@ cython_debug/
 
 # Output directories
 outputs/
+output.dds
+test.py
+test.py

@@ -13,6 +13,7 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader, Dataset
 import numpy as np
 import cv2
+import imagecodecs
 
 import tqdm
 from concurrent.futures import ThreadPoolExecutor
@@ -25,8 +26,6 @@ import Decompressor
 import Preprocess
 import TextureSet
 import AutoEncoder
-
-
 
 freeze_support()
 
@@ -179,21 +178,24 @@ if runAutoencoderTraining:
 
 #compress textures
 compressed_texture_size = 1024
-compressed_texture_names = [outputDirectory + 'compressed0.tiff']
-for i in range(1, num_feature_grids):
-    compressed_texture_names.append(outputDirectory + 'compressed' + str(i) + '.tiff')
+compressed_texture_names = [outputDirectory + 'compressed0.jxr']
+bc_texture_names = [outputDirectory + 'compressed0.dds']
 
+for i in range(1, num_feature_grids):
+    compressed_texture_names.append(outputDirectory + 'compressed' + str(i) + '.jxr')
+    bc_texture_names.append(outputDirectory + 'compressed' + str(i) + '.dds')
 
 if runCompression:
     output_textures = Compressor.compressTextures(autoencoder, device, encoderSettings, dataSet, compressed_texture_size)
 
     #save compressed texture
     for i in range(len(output_textures)):
-        output_texture  = output_textures[i]
-        #save as tiff
-        cv2.imwrite(compressed_texture_names[i], output_texture)
-        print("Compressed texture saved to: ", compressed_texture_names[i])
-
+        jxr_image = imagecodecs.jpegxr_encode(output_textures[i].astype(np.float16))
+        with open(compressed_texture_names[i], 'wb') as f:
+            f.write(jxr_image)
+            print("Compressed texture saved to: ", compressed_texture_names[i])
+        
+        Compressor.compressToBC6H(compressed_texture_names[i], outputDirectory)
 
 
     
@@ -233,7 +235,9 @@ decompressed_data = None
 if runDecompression:
     compressed_textures = []
     for compressed_texture_name in compressed_texture_names:
-        compressed_texture = np.array(cv2.imread(compressed_texture_name, cv2.IMREAD_UNCHANGED), dtype=np.float16)
+        with open(compressed_texture_name, 'rb') as f:
+            compressed_texture = imagecodecs.jpegxr_decode(f.read())
+
         compressed_textures.append(compressed_texture)
         print("Compressed texture loaded: ", compressed_texture_name)
 

@@ -7,6 +7,7 @@ import numpy as np
 import tqdm
 
 
+
 from AutoEncoder import positional_encoding_xy
 from AutoEncoder import EncoderSettings
 from AutoEncoder import AutoEncoder
@@ -73,3 +74,16 @@ def compressTextures(autoencoder, device, encoderSettings, original_data, output
     print("Compressing textures end")
     return outputTextures
 
+
+#Compress featuregrids to BC6H with mipmaps
+texConv_path = "bin\\texconv.exe"
+
+def compressToBC6H(input_texture, output_texture):
+    import os
+    import subprocess
+
+    #create mipmaps
+    mipmaps = "-m " + str(0)
+    command = texConv_path + " -nologo -y -f BC6H_SF16 -o " + output_texture + " " + mipmaps + " " + input_texture
+    print(command)
+    os.system(command)
