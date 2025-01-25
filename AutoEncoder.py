@@ -13,6 +13,7 @@ import torchvision.transforms.functional as TF
 import numpy as np
 import tqdm
 import piqa
+import json
 
 class EncoderSettings:
     def __init__(self, input_size, featuregrids_num=2):
@@ -35,7 +36,7 @@ class AutoEncoder(nn.Module):
         
         layers = encoderSettings.layers
         self.encoder = nn.Sequential(
-            nn.Conv2d(encoderSettings.input_channels + 2, layers[0], 1),
+            nn.Conv2d(encoderSettings.input_channels + 2, layers[0], 1), 
             nn.ReLU(True),
             nn.Conv2d(layers[0], layers[1], 1),
             nn.ReLU(True),
@@ -397,3 +398,29 @@ def trainAutoEncoder(autoencoder, device, dataset, channels_list, epochs, batchS
         scheduler.step(epoch_loss) 
                                                                 
  
+def saveDecoderModelAsJSON(autoencoder, outputDirectory):
+    #save model as json
+    model_path = outputDirectory + 'decodermodel.json'
+    model = autoencoder.decoder
+
+
+    json_string = {}
+
+    json_string['num_layers'] = len(model)
+    for i, layer in enumerate(model):
+        layer_category = str('layer' + str(i))
+        layer_string = {}
+        layer_string['name'] = layer.__class__.__name__
+
+        if isinstance(layer, nn.Conv2d):
+            layer_string['in_channels'] = layer.in_channels
+            layer_string['out_channels'] = layer.out_channels
+            layer_string['weight'] = layer.weight.data.flatten().cpu().numpy().tolist()
+            layer_string['bias'] = layer.bias.data.flatten().cpu().numpy().tolist()
+
+        json_string[layer_category] = layer_string
+    
+
+    with open(model_path, 'w') as f:
+        json_string = json.dumps(json_string, indent=2)
+        f.write(json_string)

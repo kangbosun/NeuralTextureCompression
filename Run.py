@@ -186,6 +186,8 @@ for i in range(1, num_feature_grids):
     bc_texture_names.append(outputDirectory + 'compressed' + str(i) + '.dds')
 
 if runCompression:
+    AutoEncoder.saveDecoderModelAsJSON(autoencoder, outputDirectory)
+
     output_textures = Compressor.compressTextures(autoencoder, device, encoderSettings, dataSet, compressed_texture_size)
 
     #save compressed texture
