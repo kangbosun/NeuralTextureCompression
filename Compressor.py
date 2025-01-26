@@ -42,7 +42,7 @@ def compressTextures(autoencoder, device, encoderSettings, original_data, output
     # cpu textures has H, W, C format
     outputTextures = []
     for i in range(output_textures_num):
-        tex_size = output_size // (2 ** i)
+        tex_size = max(256, output_size // (2 ** i))
         outputTextures.append(np.zeros((tex_size, tex_size, output_channels_num), dtype=np.float32))
 
     # Create grid of normalized coordinates
@@ -69,7 +69,7 @@ def compressTextures(autoencoder, device, encoderSettings, original_data, output
         grid_data = encoder_outputs[i*output_channels_num: (i+1)*output_channels_num].unsqueeze(0)
         scaled_texture = torch.nn.functional.interpolate(grid_data, size=(grid_size, grid_size), mode='bilinear')
         outputTextures[i][:] = scaled_texture.squeeze(0).permute(1, 2, 0).cpu().numpy()
-        grid_size = grid_size // 2
+        grid_size = max(256, grid_size // 2)
 
     print("Compressing textures end")
     return outputTextures

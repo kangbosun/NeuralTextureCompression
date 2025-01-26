@@ -2,6 +2,7 @@
 
 import os
 import random
+import cv2
 from matplotlib import pyplot as plt
 import torch
 import torch.nn as nn
@@ -20,7 +21,7 @@ class EncoderSettings:
         self.input_channels = input_size
         self.channels_per_featuregrid = 3
         self.featuregrids_num = featuregrids_num
-        self.layers = [64, 64]  # 2 for positional encoding
+        self.layers = [32]  # 2 for positional encoding
 
     def getEncoderOutputChannels(self):
         return self.channels_per_featuregrid * self.featuregrids_num
@@ -38,17 +39,17 @@ class AutoEncoder(nn.Module):
         self.encoder = nn.Sequential(
             nn.Conv2d(encoderSettings.input_channels + 2, layers[0], 1), 
             nn.ReLU(True),
-            nn.Conv2d(layers[0], layers[1], 1),
-            nn.ReLU(True),
-            nn.Conv2d(layers[1], encoderSettings.getEncoderOutputChannels(), 1),
+            #nn.Conv2d(layers[0], layers[1], 1),
+            #nn.ReLU(True),
+            nn.Conv2d(layers[0], encoderSettings.getEncoderOutputChannels(), 1),
             nn.Sigmoid()
         )
         
         self.decoder = nn.Sequential(
-            nn.Conv2d(encoderSettings.getDecoderInputChannels(), layers[1], 1),
+            nn.Conv2d(encoderSettings.getDecoderInputChannels(), layers[0], 1),
             nn.ReLU(True),
-            nn.Conv2d(layers[1], layers[0], 1),
-            nn.ReLU(True),
+            #nn.Conv2d(layers[1], layers[0], 1),
+            #nn.ReLU(True),
             nn.Conv2d(layers[0], encoderSettings.input_channels, 1),
             nn.Sigmoid()
         )
@@ -98,17 +99,12 @@ import numpy as np
 
 # Custom dataset class for patch_size
 class PatchDataset(torch.utils.data.Dataset):
-    def __init__(self, dataset, patch_size, random_sampling_num=None):
+    def __init__(self, dataset, patch_size):
         self.dataset = torch.Tensor(dataset).permute(2, 0, 1)
         self.C, self.H, self.W = self.dataset.shape
         self.patch_size = patch_size
-
-        self.random_sampling = random_sampling_num is not None
-
-        if random_sampling_num is not None:
-            self.num_patches = random_sampling_num
-        else:  
-            self.num_patches = int(self.H * self.W / (self.patch_size * self.patch_size))
+ 
+        self.num_patches = int(self.H * self.W / (self.patch_size * self.patch_size))
 
         print("===== PatchDataset Info =====")
         print("Dataset shape: ", self.dataset.shape)
@@ -127,12 +123,8 @@ class PatchDataset(torch.utils.data.Dataset):
         return self.num_patches
     
     def __getitem__(self, idx):
-        if self.random_sampling is not None:
-            y = random.randint(0, self.H - self.patch_size)
-            x = random.randint(0, self.W - self.patch_size)
-        else:
-            y = int(idx // (self.W / self.patch_size)) * self.patch_size
-            x = int(idx % (self.W / self.patch_size)) * self.patch_size
+        y = int(idx // (self.W / self.patch_size)) * self.patch_size
+        x = int(idx % (self.W / self.patch_size)) * self.patch_size
 
         patch = self.dataset[:, y:y+self.patch_size, x:x+self.patch_size]
 
@@ -140,36 +132,28 @@ class PatchDataset(torch.utils.data.Dataset):
 
         return patch, pos
 
-class CustomDataset(torch.utils.data.Dataset):
-    def __init__(self, dataset, nSamples=None):
- 
-        print("Initializing CustomDataset")
-
-        print("Creating dataset tensor")
-        self.dataset = torch.Tensor(dataset)
-        self.height, self.width = dataset.shape[:2]
-        self.nSamples = nSamples if nSamples is not None else self.width * self.height
-
-        print("Creating position tensor")
-        progress_bar = tqdm.tqdm(total=self.height, desc="Creating position tensor")
-        pos_array = []
-        for y in range(self.height):
-            for x in range(self.width):
-                pos_array.append([x / self.width, y / self.height])
-
-            progress_bar.update(1)
-        progress_bar.close()
-        self.pos_tensor = torch.Tensor(pos_array)
+class RandomSamplingDataset(torch.utils.data.Dataset):
+    def __init__(self, dataset):
+        self.dataset = torch.Tensor(dataset).permute(2, 0, 1)
+        self.C, self.H, self.W = self.dataset.shape
 
     def __len__(self):
-        return self.nSamples
+        return self.H * self.W
     
     def __getitem__(self, idx):
-        x = idx % self.width
-        y = idx // self.width
+        y = int(idx // self.W)
+        x = int(idx % self.W)
 
-        tex_tensor = self.dataset[y, x]
-        return tex_tensor, self.pos_tensor[y * self.width + x]
+        uv_y = y / self.H + (random.randomrange(-1, 1) / self.H)
+        uv_x = x / self.W + (random.randomrange(-1, 1) / self.W)
+
+        pos = torch.Tensor([uv_y, uv_x])
+
+        tex = torch.nn.functional.grid_sample(self.dataset, pos, mode='bilinear', align_corners=False)
+
+        item = torch.cat([tex, pos], dim=0)
+
+        return item
 
 
 class SSIMLoss(nn.Module):
@@ -198,14 +182,14 @@ class SSIMLoss(nn.Module):
         return ssim_loss
 
 
-def plot_loss_psnr(losses, psnrs, ssims, outputDirectory):
+def plot_loss_psnr(losses, psnrs, outputDirectory):
     """
     Loss 및 PSNR 그래프를 업데이트하는 함수
     """
     plt.figure(figsize=(10, 10))
     
     # Loss 그래프
-    plt.subplot(2, 2, 1)
+    plt.subplot(1, 2, 1)
     plt.plot(losses, label="Loss", color='red', marker='o', linestyle='--')
     plt.xlabel("Epoch")
     plt.ylabel("Loss")
@@ -213,19 +197,11 @@ def plot_loss_psnr(losses, psnrs, ssims, outputDirectory):
     plt.legend()
 
     # PSNR 그래프
-    plt.subplot(2, 2, 2)
+    plt.subplot(1, 2, 2)
     plt.plot(psnrs, label="PSNR", color='blue', marker='o', linestyle='--')
     plt.xlabel("Epoch")
     plt.ylabel("PSNR (dB)")
     plt.title("PSNR Over Epochs")
-    plt.legend()
-
-    # SSIM 그래프
-    plt.subplot(2, 2, 3)
-    plt.plot(ssims, label="SSIM", color='green', marker='o', linestyle='--')
-    plt.xlabel("Epoch")
-    plt.ylabel("SSIM")
-    plt.title("SSIM Over Epochs")
     plt.legend()
 
     # 그래프 저장
@@ -233,7 +209,7 @@ def plot_loss_psnr(losses, psnrs, ssims, outputDirectory):
     plt.savefig(save_path)
     plt.close()  # 그래프가 계속 쌓이는 것을 방지
 
-def end_of_epoch(autoencoder, outputDirectory, epoch, loss_history, psnr_history, ssim_history, lr):
+def end_of_epoch(autoencoder, outputDirectory, epoch, loss_history, psnr_history, lr):
     """
     한 epoch이 끝날 때마다 호출되는 함수
     """
@@ -247,15 +223,15 @@ def end_of_epoch(autoencoder, outputDirectory, epoch, loss_history, psnr_history
     torch.save(autoencoder.state_dict(), model_path)
 
     # Loss 및 PSNR 그래프 업데이트
-    plot_loss_psnr(loss_history, psnr_history, ssim_history, outputDirectory)
+    plot_loss_psnr(loss_history, psnr_history, outputDirectory)
 
     # Loss 및 PSNR CSV에 저장
     csv_path = os.path.join(outputDirectory, "training_curve.csv")
     if epoch == 0:
         with open(csv_path, "w") as f:
-            f.write("Epoch,Loss,PSNR,SSIM,LearningRate\n")
+            f.write("Epoch,Loss,PSNR,LearningRate\n")
     with open(csv_path, "a") as f:
-        f.write(f"{epoch},{loss_history[-1]},{psnr_history[-1]},{ssim_history[-1]},{lr[0]}\n")
+        f.write(f"{epoch},{loss_history[-1]},{psnr_history[-1]},{lr[0]}\n")
 
 def trainAutoEncoder(autoencoder, device, dataset, channels_list, epochs, batchSize, learningRate, outputDirectory):
     #load previous model and log
@@ -304,7 +280,7 @@ def trainAutoEncoder(autoencoder, device, dataset, channels_list, epochs, batchS
 
     data_set_size = len(dataset[0])
     #trains using full res feature grid
-    top_level_grid_size = 4096
+    top_level_grid_size = 2048
     top_level_grid_ratio = top_level_grid_size / data_set_size
     num_feature_grids = autoencoder.encoderSettings.featuregrids_num
 
@@ -316,6 +292,8 @@ def trainAutoEncoder(autoencoder, device, dataset, channels_list, epochs, batchS
     batch_size = patch_size * patch_size
     batch_num = max(1, (int)(batchSize / batch_size))
     patch_dataset = PatchDataset(dataset, patch_size)
+
+    #random_dataset = RandomSamplingDataset(dataset)
   
     data_loader = torch.utils.data.DataLoader(patch_dataset, batch_size=batch_num, shuffle=True, num_workers=0)
     
@@ -349,7 +327,7 @@ def trainAutoEncoder(autoencoder, device, dataset, channels_list, epochs, batchS
             for i in range(0, num_feature_grids):
                 grid_output = endcoder_outputs[:, 3 * i:3 * (i + 1), :, :]
                 if feature_grid_size != top_level_feature_grid_patch_size:
-                    grid_output = nn.functional.interpolate(grid_output, size=(feature_grid_size, feature_grid_size), mode='bilinear', align_corners=False)
+                    grid_output = nn.functional.interpolate(grid_output, size=(feature_grid_size, feature_grid_size), mode='nearest')
                     grid_output = nn.functional.interpolate(grid_output, size=(patch_size, patch_size), mode='bilinear', align_corners=False)
                 
                 if i == 0:
@@ -396,7 +374,193 @@ def trainAutoEncoder(autoencoder, device, dataset, channels_list, epochs, batchS
         end_of_epoch(autoencoder, outputDirectory, epoch, loss_history, psnr_history, ssim_history, scheduler.get_last_lr())
                                                         
         scheduler.step(epoch_loss) 
-                                                                
+
+
+class PatchDataset2(torch.utils.data.Dataset):
+    def __init__(self, device, tex_tensor, y_tensor, x_tensor, patch_size):
+        self.tex_tensor = tex_tensor
+        self.y_tensor = y_tensor
+        self.x_tensor = x_tensor
+        self.pos_tensor = torch.stack([x_tensor, y_tensor], dim=-1)
+        self.pos_tensor = self.pos_tensor * 2 - 1
+        self.patch_size = patch_size
+        self.C, self.H, self.W = tex_tensor.shape
+        self.num_patches = int(self.H * self.W / (self.patch_size * self.patch_size))
+        self.data_set_size = self.H * self.patch_size
+        self.device = device
+
+        print("===== PatchDataset Info =====")
+        print("Dataset shape: ", self.tex_tensor.shape)
+        print("Patch size: ", self.patch_size)
+        print("Number of patches: ", self.num_patches)
+        print("==============================")
+
+    def __len__(self):
+        return self.num_patches
+    
+    def __getitem__(self, idx):
+        y = int(idx // (self.W / self.patch_size)) * self.patch_size
+        x = int(idx % (self.W / self.patch_size)) * self.patch_size
+
+        patch = self.tex_tensor[:, y:y+self.patch_size, x:x+self.patch_size]
+        y_tensor = self.y_tensor[y:y+self.patch_size, x:x+self.patch_size]
+        x_tensor = self.x_tensor[y:y+self.patch_size, x:x+self.patch_size]
+        grid = torch.stack([x_tensor, y_tensor], dim=-1)
+
+        return patch, grid, y_tensor, x_tensor
+
+def trainAutoEncoder2(autoencoder, device, dataset, channels_list, epochs, batchSize, learningRate, outputDirectory):
+    #load previous model and log
+    start_epoch = 0
+    loss_history = []
+    psnr_history = []
+
+    start_lr = learningRate
+    
+    #load loss and psnr history
+    last_model = outputDirectory + 'model.pth'
+
+    if os.path.exists(outputDirectory + 'training_curve.csv') and os.path.exists(outputDirectory + 'model.pth'):       
+        autoencoder.load_state_dict(torch.load(last_model))
+        print("Loaded model: ", last_model)  
+
+        with open(outputDirectory + 'training_curve.csv', 'r') as f:
+            lines = f.readlines()
+            for line in lines[1:]:
+                parts = line.split(',')
+                start_epoch = int(parts[0]) + 1
+                loss_history.append(float(parts[1]))
+                psnr_history.append(float(parts[2]))
+                start_lr = float(parts[3])
+
+            #print last epoch info
+            print("Last epoch: ", start_epoch, " Loss: ", loss_history[-1], " PSNR: ", psnr_history[-1])          
+
+    autoencoder.to(device)
+    autoencoder.train()
+    
+    learningRate = start_lr
+    optimizer = optim.Adam(autoencoder.parameters(), lr=learningRate)
+    
+    from torch.optim.lr_scheduler import StepLR
+    #scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.95)
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=10, verbose=True)
+
+    total_channels = 0
+    for channels in channels_list:
+        total_channels += channels
+
+    mse_loss_func = nn.MSELoss()
+
+    data_set_size = len(dataset[0])
+    #trains using full res feature grid
+    top_level_grid_size = 1024
+    top_level_grid_ratio = top_level_grid_size / data_set_size
+    num_feature_grids = autoencoder.encoderSettings.featuregrids_num
+
+    #data info
+    print("===== Dataset Info =====")
+    print("Dataset size: ", len(dataset))
+    print("Batch size: ", batchSize)
+    print("========================")
+
+    # meshgrid
+    y, x = np.meshgrid(np.linspace(0, 1, data_set_size), np.linspace(0, 1, data_set_size), indexing='ij')
+
+    # reaarange to -1, 1
+    x = x * 2 - 1
+    y = y * 2 - 1
+
+    y_tensor = torch.Tensor(y).to(device)
+    x_tensor = torch.Tensor(x).to(device)
+
+    tex_tensor = torch.Tensor(dataset).permute(2, 0, 1).to(device)
+
+    #add batch dimension temporarily
+    tex_tensor = tex_tensor.unsqueeze(0)
+
+    # grid sample
+    grid = torch.stack([x_tensor, y_tensor], dim=-1).unsqueeze(0)
+
+    #tex_tensor = torch.nn.functional.grid_sample(tex_tensor, grid, mode='bilinear', padding_mode='zeros', align_corners=True)
+
+    #remove batch dimension
+    tex_tensor = tex_tensor.squeeze(0)
+    y_tensor = y_tensor.squeeze(0)
+    x_tensor = x_tensor.squeeze(0)
+
+    patch_size = 32
+    feature_grid_divider = data_set_size / patch_size
+    dataloader = torch.utils.data.DataLoader(PatchDataset2(device, tex_tensor, y_tensor, x_tensor, patch_size), batch_size=1, shuffle=False, num_workers=0)
+
+    for epoch in range(start_epoch, epochs):
+        epoch_loss = 0.0
+        epoce_mse_loss = 0.0
+        epoch_PSNR  = 0
+
+        progress_bar = tqdm.tqdm(total=len(dataloader), desc="Epoch " + str(epoch + 1) + "/" + str(epochs), leave=True)
+        for tex_patch_tensor, grid_tensor, y_tensor, x_tensor in dataloader:
+
+            optimizer.zero_grad()
+
+            unsigned_pos_tensor = torch.stack([y_tensor, x_tensor], dim=-1).permute(0, 3, 1, 2)
+            encoder_inputs = torch.cat([tex_patch_tensor, unsigned_pos_tensor], dim=1)
+            
+            endcoder_outputs = autoencoder.encoder(encoder_inputs)
+            #decoder_inputs = endcoder_outputs
+            decoder_inputs = None
+
+            feature_grid_size = (int)(top_level_grid_size / feature_grid_divider)
+            for i in range(0, num_feature_grids):
+                grid_output = endcoder_outputs[:, 3 * i:3 * (i + 1), :, :]
+                if feature_grid_size != data_set_size:
+                    grid_output = nn.functional.interpolate(grid_output, size=(feature_grid_size, feature_grid_size), mode='bilinear', align_corners=True)
+                    grid_output = nn.functional.interpolate(grid_output, size=(patch_size, patch_size), mode='bilinear', align_corners=True)
+                    #grid_output = torch.nn.functional.grid_sample(grid_output, pos_tensor, mode='bilinear', align_corners=True)
+                    
+                    decoder_inputs = grid_output if decoder_inputs is None else torch.cat([decoder_inputs, grid_output], dim=1)
+            
+                feature_grid_size = min(256, int(feature_grid_size / 2))
+
+            decoder_inputs = torch.cat([decoder_inputs, unsigned_pos_tensor], dim=1)
+
+            #decoder output
+            decoder_outputs = autoencoder.decoder(decoder_inputs)
+
+            # tex_image = decoder_outputs[0, 0:3].permute(1, 2, 0).cpu().detach().numpy()
+            # tex_image = tex_image * 255
+            # cv2.imwrite(outputDirectory + 'sample_tex.png', tex_image)            
+
+            #get loss for each channels
+            mse_loss = mse_loss_func(decoder_outputs, tex_patch_tensor)
+
+            loss = mse_loss
+            loss.backward()
+
+            epoch_PSNR += 10 * torch.log10(1 / mse_loss)
+            epoch_loss += loss.item()
+            epoce_mse_loss += mse_loss.item()
+
+            optimizer.step()
+
+            progress_bar.update(1)
+
+        progress_bar.close()
+
+        epoch_loss = epoch_loss / len(dataloader)
+        epoch_PSNR = epoch_PSNR / len(dataloader)
+        epoce_mse_loss = epoce_mse_loss / len(dataloader)
+
+        loss_history.append(epoch_loss)
+        psnr_history.append(epoch_PSNR.cpu().detach().numpy())
+
+        print(f"Epoch {epoch + 1}/{epochs} Loss: {epoch_loss:.6f} MSE: {epoce_mse_loss:.6f} PSNR: {epoch_PSNR:.4f} LR: {scheduler.get_last_lr()}")
+
+        end_of_epoch(autoencoder, outputDirectory, epoch, loss_history, psnr_history, scheduler.get_last_lr())
+
+        scheduler.step(epoch_loss)
+
+
  
 def saveDecoderModelAsJSON(autoencoder, outputDirectory):
     #save model as json

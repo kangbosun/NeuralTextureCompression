@@ -169,10 +169,9 @@ if model is not None:
     autoencoder.load_state_dict(model)
     print("Autoencoder loaded")
 
-
 if runAutoencoderTraining:
     print("Training autoencoder")
-    AutoEncoder.trainAutoEncoder(autoencoder, device, dataSet, channel_count_list, epochs, 8192, 1e-4, outputDirectory)
+    AutoEncoder.trainAutoEncoder2(autoencoder, device, dataSet, channel_count_list, epochs, 8192, 1e-3, outputDirectory)
     #save autoencoder
     torch.save(autoencoder.state_dict(), modelFilePath)
 
