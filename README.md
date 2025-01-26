@@ -21,7 +21,11 @@ Setup Instructions
 
 Sample Outputs
 --------------
-Using the trained neural network, four 4K textures (with 3, 3, 1, and 1 channels) are compressed into four feature grids (top resolution 1024, .tiff) and then decompressed back.(restored[n].bmp) The training time on an RTX 4060 is approximately 3 minutes.
+Using the trained neural network, four 4K textures (with 3, 3, 1, and 1 channels) are compressed into four feature grids (top resolution 1024, saved as .jxr) and then decompressed back into their original form (restored[n].bmp).
+
+The training process takes approximately 15 minutes on an RTX 4060.
+
+For real-time rendering, .dds files are used, leveraging BC compression with hardware acceleration.
 
 Usage
 -----
